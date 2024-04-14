@@ -1,14 +1,49 @@
 <resources>
     <string name="app_name">Asclepius</string>
     <string name="camera_x">CameraX</string>
+    <string name="gallery">Open Gallery</string>
     <string name="camera">Kamera</string>
-    <string name="gallery">Galeri</string>
     <string name="analyze">Analyze</string>
-    <string name="result">Hasil Analisis</string>
+    <string name="result">Result</string>
+    <string name="analyze_result">Analyze Result</string>
+    <string name="save">Save Result</string>
+    <string name="saved">Result Saved!</string>
     <string name="image_classifier_failed">Image classifier failed to initialize. See error logs for details</string>
     <string name="image_classifier_null">Image classifier returned null</string>
+    <string name="image_result">Image Result</string>
+    <string name="image_preview">Image preview before analyzed</string>
+    <string name="image_article">Image Article</string>
     <string name="confidence">
         Confidence:
     </string>
     <string name="dash">-</string>
+    <string name="no_result">No result</string>
+    <string name="history">History Result</string>
+    <string name="no_history">
+        No history result
+    </string>
+    <string name="delete">Delete</string>
+    <string name="delete_history">Delete History</string>
+    <string name="delete_message">Are you sure to delete this history?</string>
+    <string name="yes">Yes</string>
+    <string name="cancel">Cancel</string>
+    <string name="back">Back</string>
+    <string name="example_date">
+        2021-08-01
+    </string>
+    <string name="example_label">
+        Non-Cancer
+    </string>
+    <string name="welcome">
+        Welcome to Asclepius
+    </string>
+    <string name="hello">
+        Hello, \nCheck Your Skin Health Here
+    </string>
+    <string name="latest_article">
+        Latest Article
+    </string>
+    <string name="title">
+        Title
+    </string>
 </resources>

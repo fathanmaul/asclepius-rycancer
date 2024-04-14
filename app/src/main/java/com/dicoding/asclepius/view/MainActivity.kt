@@ -1,22 +1,28 @@
 package com.dicoding.asclepius.view
 
-import android.Manifest
 import android.app.Activity
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.util.Log
+import android.view.View
 import android.widget.Toast
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.content.ContextCompat
 import com.dicoding.asclepius.R
 import com.dicoding.asclepius.databinding.ActivityMainBinding
 import com.dicoding.asclepius.helper.ImageClassifierHelper
-import com.dicoding.asclepius.model.ClassificationResult
+import com.dicoding.asclepius.utils.Constant.LABEL_EXTRA
+import com.dicoding.asclepius.utils.Constant.IMAGE_URI_EXTRA
+import com.dicoding.asclepius.utils.Constant.CONFIDENCE_EXTRA
+import com.dicoding.asclepius.utils.Constant.DELAY_RESULT
+import com.dicoding.asclepius.utils.Constant.INFERENCE_TIME_EXTRA
+import com.dicoding.asclepius.utils.Constant.PROGRESS_INDICATOR
 import com.yalantis.ucrop.UCrop
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.tensorflow.lite.task.vision.classifier.Classifications
 
 class MainActivity : AppCompatActivity() {
@@ -24,17 +30,32 @@ class MainActivity : AppCompatActivity() {
     private var currentImageUri: Uri? = null
     private var imageClassifierHelper: ImageClassifierHelper? = null
 
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
-        binding.galleryButton.setOnClickListener {
-            startGallery()
+        with(binding) {
+            galleryButton.setOnClickListener {
+                startGallery()
+            }
+            analyzeButton.setOnClickListener {
+                if (currentImageUri != null) {
+                    analyzeImage(currentImageUri!!)
+                } else {
+                    showToast("Please select an image first.")
+                }
+            }
+            historyButton.setOnClickListener {
+                startActivity(Intent(this@MainActivity, HistoryActivity::class.java))
+            }
         }
+        showProgressIndicator(false)
     }
 
+
     private fun startGallery() {
+        binding.galleryButton.isEnabled = false
         launcherGallery.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
     }
 
@@ -44,7 +65,8 @@ class MainActivity : AppCompatActivity() {
         if (uri != null) {
             launchUCrop(uri)
         } else {
-            showToast("Gagal mengambil gambar dari Gallery.")
+            showToast("Failed to get image from gallery.")
+            binding.galleryButton.isEnabled = true
         }
     }
 
@@ -55,8 +77,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun launchUCrop(sourceUri: Uri) {
         val destinationUri = Uri.fromFile(createTempFile())
-        val uCrop =
-            UCrop.of(sourceUri, destinationUri).withAspectRatio(1f, 1f)
+        val uCrop = UCrop.of(sourceUri, destinationUri).withAspectRatio(1f, 1f)
         uCrop.getIntent(this).let {
             uCropLauncher.launch(it)
         }
@@ -69,18 +90,15 @@ class MainActivity : AppCompatActivity() {
                 if (resultUri != null) {
                     currentImageUri = resultUri
                     showImage()
-                    analyzeImage(resultUri)
+                    binding.galleryButton.isEnabled = true
                 }
             } else if (result.resultCode == UCrop.RESULT_ERROR) {
-                val error = UCrop.getError(result.data!!)
-                showToast("Error: ${error?.localizedMessage}")
+                showToast("Something went error!")
             }
         }
 
-
     private fun showImage() {
         currentImageUri?.let {
-            Log.d("Image URI", "showImage: $it")
             binding.previewImageView.setImageURI(it)
         }
     }
@@ -88,11 +106,10 @@ class MainActivity : AppCompatActivity() {
     private fun analyzeImage(imageUri: Uri) {
         Toast.makeText(this, "Analyzing image...", Toast.LENGTH_SHORT).show()
         try {
-            imageClassifierHelper = ImageClassifierHelper(
-                context = this,
+            imageClassifierHelper = ImageClassifierHelper(context = this,
                 classifierListener = object : ImageClassifierHelper.ClassifierListener {
                     override fun onError(error: String) {
-                        Toast.makeText(this@MainActivity, error, Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@MainActivity, "Something went error!", Toast.LENGTH_SHORT).show()
                     }
 
                     override fun onResults(results: List<Classifications>?, inferenceTime: Long) {
@@ -100,17 +117,11 @@ class MainActivity : AppCompatActivity() {
                             val topResult = listClassification[0]
                             val result = topResult.categories[0].label
                             val confidence = topResult.categories[0].score
-                            val inferenceTimeInSecond = inferenceTime / 1000.0
-                            showToast("Result: $result, Confidence: $confidence, Inference Time: $inferenceTimeInSecond s")
-                            Log.i(
-                                "Image Classification",
-                                "Result: $result, Confidence: $confidence, Inference Time: $inferenceTimeInSecond s"
-                            )
-                            moveToResult(imageUri, result, confidence, inferenceTime)
+                            showToast("Done Analyzing Image!")
+                            moveToResult(imageUri.toString(), result, confidence, inferenceTime)
                         }
                     }
-                }
-            )
+                })
         } catch (e: Exception) {
             showToast("Error: ${e.message}")
         }
@@ -118,27 +129,39 @@ class MainActivity : AppCompatActivity() {
         imageClassifierHelper?.classifyStaticImage(imageUri)
     }
 
+
     private fun moveToResult(
-        currentImageUri: Uri,
-        label: String,
-        confidence: Float,
-        inferenceTime: Long
+        currentImageUri: String, label: String, confidence: Float, inferenceTime: Long
     ) {
         val intent = Intent(this, ResultActivity::class.java).apply {
-            putExtra(
-                ResultActivity.EXTRA_RESULT,
-                ClassificationResult(
-                    currentImageUri,
-                    label,
-                    confidence,
-                    inferenceTime
-                )
-            )
+            putExtra(LABEL_EXTRA, label)
+            putExtra(CONFIDENCE_EXTRA, confidence)
+            putExtra(INFERENCE_TIME_EXTRA, inferenceTime)
+            putExtra(IMAGE_URI_EXTRA, currentImageUri)
         }
-        startActivity(intent)
+        CoroutineScope(Dispatchers.Main).launch {
+            showProgressIndicator(true)
+            delay(DELAY_RESULT)
+            showProgressIndicator(false)
+            binding.previewImageView.setImageResource(R.drawable.ic_place_holder)
+            this@MainActivity.currentImageUri = null
+            startActivity(intent)
+        }
+
+
     }
+
 
     private fun showToast(message: String) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun showProgressIndicator(show: Boolean) {
+        binding.progressIndicator.progress = PROGRESS_INDICATOR
+        if (show) {
+            binding.progressIndicator.visibility = View.VISIBLE
+        } else {
+            binding.progressIndicator.visibility = View.GONE
+        }
     }
 }

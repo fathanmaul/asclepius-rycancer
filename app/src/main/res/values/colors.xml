@@ -2,4 +2,18 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+
+    <color name="teal_50">#f0fdfa</color>
+    <color name="teal_100">#ccfbf1</color>
+    <color name="teal_200">#99f6e4</color>
+    <color name="teal_300">#5eead4</color>
+    <color name="teal_500">#14b8a6</color>
+    <color name="teal_700">#0f766e</color>
+
+    <color name="neutral_100">#f5f5f5</color>
+    <color name="neutral_900">#171717</color>
+    <color name="neutral_800">#262626</color>
+
+
 </resources>
